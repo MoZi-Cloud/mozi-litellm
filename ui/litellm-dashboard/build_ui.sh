@@ -23,17 +23,17 @@ if ! command -v nvm &> /dev/null; then
 fi
 
 # Use nvm to set the required Node.js version
-nvm use v20
+nvm use v22
 
 # Check if nvm use was successful
 if [ $? -ne 0 ]; then
-  echo "Error: Failed to switch to Node.js v20. Deployment aborted."
+  echo "Error: Failed to switch to Node.js v22. Deployment aborted."
   exit 1
 fi
 
 
-# Run npm build
-npm run build
+# Run pnpm build
+pnpm run build
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then

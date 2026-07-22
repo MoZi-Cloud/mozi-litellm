@@ -10,7 +10,7 @@ on:
     paths:
       - docker/Dockerfile.non_root
       - uv.lock
-      - ui/litellm-dashboard/package-lock.json
+      - ui/litellm-dashboard/pnpm-lock.yaml
       - .github/workflows/image-scan.yml
   schedule:
     - cron: "41 6 * * *"

@@ -71,16 +71,16 @@ $ui_eslint_files
 EOF
         cd ui/litellm-dashboard
         if [ ${#prettier_rel[@]} -gt 0 ]; then
-            npx prettier --check "${prettier_rel[@]}" || rc=1
+            pnpm exec prettier --check "${prettier_rel[@]}" || rc=1
         fi
         if [ ${#eslint_rel[@]} -gt 0 ]; then
-            npx eslint --no-warn-ignored --pass-on-unpruned-suppressions "${eslint_rel[@]}" || rc=1
+            pnpm exec eslint --no-warn-ignored --pass-on-unpruned-suppressions "${eslint_rel[@]}" || rc=1
         fi
         # Whole-folder lint budgets, exactly as the frontend-lint job runs them: the
         # counts are not diff-scoped, so a local pass here means the budget step will
         # pass in CI too.
         report=$(mktemp)
-        npx eslint . -f json -o "$report" || true
+        pnpm exec eslint . -f json -o "$report" || true
         node scripts/check-lint-budgets.mjs "$report" eslint-budgets.json || rc=1
         rm -f "$report"
         exit $rc
@@ -119,12 +119,12 @@ if [ -n "$ui_prettier_files" ] || [ -n "$ui_eslint_files" ]; then
         bootstrap_hint
         status=1
     else
-        lint_dashboard || { echo "✗ Dashboard lint failed. See above; format with: (cd ui/litellm-dashboard && npm run format)." >&2; status=1; }
+        lint_dashboard || { echo "✗ Dashboard lint failed. See above; format with: (cd ui/litellm-dashboard && pnpm run format)." >&2; status=1; }
     fi
 fi
 
 if [ -n "$spec_files" ]; then
-    echo "pre-commit: checking dashboard API types are in sync (npm run gen:api)"
+    echo "pre-commit: checking dashboard API types are in sync (pnpm run gen:api)"
     # gen-api-types.mjs imports litellm.proxy.proxy_server, which needs the proxy deps
     # and an up-to-date Prisma client; check-ui-api-types.yml installs those and runs
     # prisma generate before gen:api, so mirror that here or a stale client can mask
@@ -140,13 +140,13 @@ if [ -n "$spec_files" ]; then
     elif ! uv run --no-sync python scripts/prisma_generate_if_needed.py; then
         echo "✗ Could not regenerate Prisma client (prisma generate failed)." >&2
         status=1
-    elif ( cd ui/litellm-dashboard && LITELLM_PYTHON="uv run --no-sync python" npm run gen:api ); then
+    elif ( cd ui/litellm-dashboard && LITELLM_PYTHON="uv run --no-sync python" pnpm run gen:api ); then
         if ! git diff --quiet -- ui/litellm-dashboard/src/lib/http/schema.d.ts; then
             echo "✗ Dashboard API types are stale; regenerated src/lib/http/schema.d.ts. Stage it and re-run make pre-commit." >&2
             status=1
         fi
     else
-        echo "✗ Could not regenerate API types (npm run gen:api failed)." >&2
+        echo "✗ Could not regenerate API types (pnpm run gen:api failed)." >&2
         status=1
     fi
 fi

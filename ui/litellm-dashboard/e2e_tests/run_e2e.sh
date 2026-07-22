@@ -16,7 +16,7 @@ set -euo pipefail
 #   - PostgreSQL already running on 127.0.0.1:5432
 #   - DATABASE_URL already set
 #   - Python/uv already installed
-#   - Node.js/npx already available
+#   - Node.js/pnpm already available
 # ================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,7 +48,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # --- Pre-flight checks ---
-for cmd in python3 npx uv; do
+for cmd in python3 pnpm uv; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "Error: $cmd not found."; exit 1; }
 done
 
@@ -106,8 +106,8 @@ export LITELLM_LICENSE="${LITELLM_LICENSE:-}"
 # --- Rebuild UI from source ---
 echo "=== Building UI from source ==="
 cd "$DASHBOARD_DIR"
-npm install --silent 2>/dev/null || true
-npm run build
+pnpm install --silent 2>/dev/null || true
+pnpm run build
 # Copy the fresh build to the proxy's static UI directory
 cp -r "$DASHBOARD_DIR/out/" "$REPO_ROOT/litellm/proxy/_experimental/out/"
 
@@ -182,11 +182,11 @@ PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAM
 # --- Playwright ---
 echo "=== Installing Playwright dependencies ==="
 cd "$DASHBOARD_DIR"
-npm install --silent 2>/dev/null || true
-npx playwright install chromium --with-deps 2>/dev/null || npx playwright install chromium
+pnpm install --silent 2>/dev/null || true
+pnpm exec playwright install chromium --with-deps 2>/dev/null || pnpm exec playwright install chromium
 
 echo "=== Running Playwright tests ==="
-npx playwright test --config e2e_tests/playwright.config.ts "$@"
+pnpm exec playwright test --config e2e_tests/playwright.config.ts "$@"
 EXIT_CODE=$?
 
 exit $EXIT_CODE

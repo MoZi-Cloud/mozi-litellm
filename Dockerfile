@@ -7,7 +7,7 @@ ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17
 ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
 # Pinned by digest like the other base images; bump explicitly on Node upgrades.
-ARG UI_BUILD_IMAGE=node:20.18-alpine3.20@sha256:3488b10bf958af7125a176419d2d8a9937d895bf124012aae811651988d2ffe6
+ARG UI_BUILD_IMAGE=node:22-alpine3.20@sha256:2289fb1fba0f4633b08ec47b94a89c7e20b829fc5679f9b7b298eaa2f1ed8b7e
 
 FROM $UV_IMAGE AS uvbin
 
@@ -16,17 +16,17 @@ FROM $UV_IMAGE AS uvbin
 # instead of once per target arch under QEMU.
 FROM --platform=$BUILDPLATFORM $UI_BUILD_IMAGE AS ui-builder
 
-ENV NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_fund=false \
-    npm_config_audit=false
+ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /ui
 
-COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+RUN npm install -g corepack@latest && corepack enable
+
+COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/pnpm-lock.yaml ui/litellm-dashboard/pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm pnpm install --frozen-lockfile --prefer-offline
 
 COPY ui/litellm-dashboard/ ./
-RUN npm run build
+RUN pnpm run build
 
 # Builder stage
 FROM $LITELLM_BUILD_IMAGE AS builder

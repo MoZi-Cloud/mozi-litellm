@@ -11,7 +11,7 @@ uv sync --frozen --group proxy-dev --extra proxy
 echo "[post-create] Generating Prisma client"
 uv run --no-sync prisma generate
 
-echo "[post-create] Installing npm dependencies"
-cd ui/litellm-dashboard && npm ci
+echo "[post-create] Installing pnpm dependencies"
+cd ui/litellm-dashboard && pnpm install --frozen-lockfile
 
 echo "[post-create] Done"
