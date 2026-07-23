@@ -1,7 +1,6 @@
 version: 2.1
 orbs:
   codecov: codecov/codecov@4.0.1
-  node: circleci/node@5.1.0 # Add this line to declare the node orb
   win: circleci/windows@5.0 # Add Windows orb
 
 commands:
@@ -2476,29 +2475,30 @@ jobs:
       # instead of piping NodeSource's setup_18.x apt-repo installer into
       # sudo bash (which runs a mutable upstream script unattended).
       - run:
-          name: Install Node.js 18.20.8
+          name: Install Node.js 22.14.0
           command: |
-            NODE_VERSION="18.20.8"
+            NODE_VERSION="22.14.0"
             NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
-            NODE_EXPECTED_SHA="5467ee62d6af1411d46b6a10e3fb5cacc92734dbcef465fea14e7b90993001c9"
+            NODE_EXPECTED_SHA="69b09dba5c8dcb05c4e4273a4340db1005abeafe3927efda2bc5b249e80437ec"
             curl -sSLf -o "/tmp/${NODE_TARBALL}" "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}"
             echo "${NODE_EXPECTED_SHA}  /tmp/${NODE_TARBALL}" | sha256sum -c -
             sudo tar -xJf "/tmp/${NODE_TARBALL}" -C /usr/local --strip-components=1
             rm -f "/tmp/${NODE_TARBALL}"
             node --version
             npm --version
+            npm install -g corepack@latest && corepack enable
 
       - run:
           name: Install Node.js test dependencies
           command: |
             cd tests/pass_through_tests
-            npm ci
+            pnpm install --frozen-lockfile
 
       - run:
           name: Run Vertex AI, Google AI Studio Node.js tests
           command: |
             cd tests/pass_through_tests
-            NODE_OPTIONS=--experimental-vm-modules npx jest . --verbose
+            NODE_OPTIONS=--experimental-vm-modules pnpm exec jest . --verbose
           no_output_timeout: 30m
       - run:
           name: Run tests
@@ -2614,7 +2614,7 @@ jobs:
 
   ui_build:
     docker:
-      - image: cimg/node:20.19@sha256:35e64883e8d21bc345b0a7b04c35ee46442c127607ed1d8d7d37d8a1ed76db81
+      - image: cimg/node:22.14.0
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -2627,19 +2627,20 @@ jobs:
       - setup_google_dns
       - restore_cache:
           keys:
-            - ui-build-deps-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+            - ui-build-deps-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
             - ui-build-deps-v1-
       - restore_cache:
           keys:
-            - ui-nextjs-cache-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+            - ui-nextjs-cache-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
             - ui-nextjs-cache-v1-
       - run:
           name: Install dependencies
           command: |
+            npm install -g corepack@latest && corepack enable
             cd ui/litellm-dashboard
-            npm ci
+            pnpm install --frozen-lockfile
       - save_cache:
-          key: ui-build-deps-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+          key: ui-build-deps-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
           paths:
             - ui/litellm-dashboard/node_modules
       - run:
@@ -2648,7 +2649,7 @@ jobs:
             cd ui/litellm-dashboard
             source ./build_ui.sh
       - save_cache:
-          key: ui-nextjs-cache-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+          key: ui-nextjs-cache-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
           paths:
             - ui/litellm-dashboard/.next/cache
       - persist_to_workspace:
@@ -2658,7 +2659,7 @@ jobs:
 
   ui_unit_tests:
     docker:
-      - image: cimg/node:20.19@sha256:35e64883e8d21bc345b0a7b04c35ee46442c127607ed1d8d7d37d8a1ed76db81
+      - image: cimg/node:22.14.0
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -2671,15 +2672,16 @@ jobs:
       - setup_google_dns
       - restore_cache:
           keys:
-            - ui-unit-deps-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+            - ui-unit-deps-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
             - ui-unit-deps-v1-
       - run:
           name: Install dependencies
           command: |
+            npm install -g corepack@latest && corepack enable
             cd ui/litellm-dashboard
-            npm ci
+            pnpm install --frozen-lockfile
       - save_cache:
-          key: ui-unit-deps-v1-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+          key: ui-unit-deps-v1-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
           paths:
             - ui/litellm-dashboard/node_modules
       - run:
@@ -2687,7 +2689,7 @@ jobs:
           command: |
             cd ui/litellm-dashboard
 
-            CI=true npm run test -- --run \
+            CI=true pnpm run test -- --run \
               --pool forks --poolOptions.forks.maxForks=6
 
   e2e_ui_testing:
@@ -2731,7 +2733,7 @@ jobs:
             - ~/.cache/uv
       - restore_cache:
           keys:
-            - ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+            - ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
       - run:
           name: Install Node dependencies and Playwright
           # The cimg/python:3.12-browsers image already ships the Chromium system
@@ -2740,11 +2742,18 @@ jobs:
           # 5-10 minutes to the job and frequently stalls on flaky Ubuntu mirrors,
           # so we install just the browser binary.
           command: |
+            NODE_VERSION="22.14.0"
+            NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
+            curl -sSLf -o "/tmp/${NODE_TARBALL}" "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}"
+            echo "69b09dba5c8dcb05c4e4273a4340db1005abeafe3927efda2bc5b249e80437ec  /tmp/${NODE_TARBALL}" | sha256sum -c -
+            sudo tar -xJf "/tmp/${NODE_TARBALL}" -C /usr/local --strip-components=1
+            rm -f "/tmp/${NODE_TARBALL}"
+            npm install -g corepack@latest && corepack enable
             cd ui/litellm-dashboard
-            npm ci
-            npx playwright install chromium
+            pnpm install --frozen-lockfile
+            pnpm exec playwright install chromium
       - save_cache:
-          key: ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+          key: ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
           paths:
             - ui/litellm-dashboard/node_modules
             - ~/.cache/ms-playwright
@@ -2760,7 +2769,7 @@ jobs:
           # freshly built bundle is what the proxy actually serves.
           command: |
             cd ui/litellm-dashboard
-            npm run build
+            pnpm run build
             rm -rf ../../litellm/proxy/_experimental/out
             mv out ../../litellm/proxy/_experimental/out
             # Restructure HTML so extensionless routes work (login.html -> login/index.html)
@@ -2821,7 +2830,7 @@ jobs:
           command: |
             cd ui/litellm-dashboard
             LITELLM_LICENSE="$LITELLM_LICENSE" \
-              npx playwright test --config e2e_tests/playwright.config.ts
+              pnpm exec playwright test --config e2e_tests/playwright.config.ts
           no_output_timeout: 10m
       - store_artifacts:
           path: ui/litellm-dashboard/test-results
@@ -2870,15 +2879,22 @@ jobs:
             - ~/.cache/uv
       - restore_cache:
           keys:
-            - ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+            - ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
       - run:
           name: Install Node dependencies and Playwright
           command: |
+            NODE_VERSION="22.14.0"
+            NODE_TARBALL="node-v${NODE_VERSION}-linux-x64.tar.xz"
+            curl -sSLf -o "/tmp/${NODE_TARBALL}" "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TARBALL}"
+            echo "69b09dba5c8dcb05c4e4273a4340db1005abeafe3927efda2bc5b249e80437ec  /tmp/${NODE_TARBALL}" | sha256sum -c -
+            sudo tar -xJf "/tmp/${NODE_TARBALL}" -C /usr/local --strip-components=1
+            rm -f "/tmp/${NODE_TARBALL}"
+            npm install -g corepack@latest && corepack enable
             cd ui/litellm-dashboard
-            npm ci
-            npx playwright install chromium
+            pnpm install --frozen-lockfile
+            pnpm exec playwright install chromium
       - save_cache:
-          key: ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/package-lock.json" }}
+          key: ui-e2e-node-deps-v2-{{ checksum "ui/litellm-dashboard/pnpm-lock.yaml" }}
           paths:
             - ui/litellm-dashboard/node_modules
             - ~/.cache/ms-playwright
@@ -2886,7 +2902,7 @@ jobs:
           name: Build UI from source
           command: |
             cd ui/litellm-dashboard
-            npm run build
+            pnpm run build
             rm -rf ../../litellm/proxy/_experimental/out
             mv out ../../litellm/proxy/_experimental/out
             find ../../litellm/proxy/_experimental/out -name '*.html' ! -name 'index.html' | while read -r f; do
@@ -2939,7 +2955,7 @@ jobs:
           command: |
             cd ui/litellm-dashboard
             LITELLM_LICENSE="$LITELLM_LICENSE" \
-              npx playwright test --config e2e_tests/migration.serverRootPath.config.ts
+              pnpm exec playwright test --config e2e_tests/migration.serverRootPath.config.ts
           no_output_timeout: 10m
       - store_artifacts:
           path: ui/litellm-dashboard/test-results

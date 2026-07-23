@@ -101,10 +101,17 @@ jobs:
           docker logs litellm-test
           exit 1
 
-      - name: Setup Node for Playwright
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          node-version: "20"
+          version: 11.13.0
+
+      - name: Setup Node for Playwright
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: ui/litellm-dashboard/pnpm-lock.yaml
 
       - name: Install UI deps and Chromium
         working-directory: ui/litellm-dashboard
@@ -123,18 +130,18 @@ jobs:
             done
           }
 
-          npm config set fetch-retries 5
-          npm config set fetch-retry-mintimeout 20000
-          npm config set fetch-retry-maxtimeout 120000
+          pnpm config set fetch-retries 5
+          pnpm config set fetch-retry-mintimeout 20000
+          pnpm config set fetch-retry-maxtimeout 120000
 
-          retry npm ci
-          retry npx playwright install --with-deps chromium
+          retry pnpm install --frozen-lockfile
+          retry pnpm exec playwright install --with-deps chromium
 
       - name: Run SERVER_ROOT_PATH redirect e2e
         working-directory: ui/litellm-dashboard
         env:
           SERVER_ROOT_PATH: ${{ matrix.root_path }}
-        run: npx playwright test --config=e2e_tests/serverRootPath.config.ts
+        run: pnpm exec playwright test --config=e2e_tests/serverRootPath.config.ts
 
       - name: Upload Playwright artifacts on failure
         if: failure()

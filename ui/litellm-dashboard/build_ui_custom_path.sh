@@ -33,16 +33,16 @@ if ! command -v nvm &> /dev/null; then
 fi
 
 # Use nvm to set the required Node.js version
-nvm use v18.17.0
+nvm use v22
 
 # Check if nvm use was successful
 if [ $? -ne 0 ]; then
-    echo "Error: Failed to switch to Node.js v18.17.0. Deployment aborted."
+    echo "Error: Failed to switch to Node.js v22. Deployment aborted."
     exit 1
 fi
 
-# Run npm build with the environment variable
-UI_BASE_PATH=$UI_BASE_PATH npm run build
+# Run pnpm build with the environment variable
+UI_BASE_PATH=$UI_BASE_PATH pnpm run build
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then

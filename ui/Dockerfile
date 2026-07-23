@@ -2,26 +2,26 @@
 
 # UI container — Next.js static export served by nginx.
 
-ARG NODE_VERSION=20.18-alpine3.20
+ARG NODE_VERSION=22-alpine3.20
 ARG NGINX_VERSION=1.27-alpine
 
 # ---------- builder ----------
 FROM node:${NODE_VERSION} AS builder
 
-ENV NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_fund=false \
-    npm_config_audit=false
+ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
+RUN npm install -g corepack@latest && corepack enable
+
 # Layer the lockfile-only install above the source copy so source-only
 # edits don't bust the install cache.
-COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --prefer-offline
+COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/pnpm-lock.yaml ui/litellm-dashboard/pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm \
+    pnpm install --frozen-lockfile --prefer-offline
 
 COPY ui/litellm-dashboard/ ./
-RUN npm run build
+RUN pnpm run build
 
 # ---------- runtime ----------
 FROM nginx:${NGINX_VERSION} AS runtime

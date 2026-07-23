@@ -11,3 +11,5 @@ build
 coverage/
 eslint-suppressions.json
 src/lib/http/schema.d.ts
+pnpm-lock.yaml
+package-lock.json
